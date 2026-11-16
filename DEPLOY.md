@@ -13,10 +13,18 @@ Setup takes about 20 minutes and uses three free accounts: **Neon** (database), 
 
 ---
 
-## 1. Anthropic API key (5 min)
+## 1. AI key (5 min): free Gemini **or** paid Claude
+
+**Free: Google Gemini**
+1. Go to **aistudio.google.com**, sign in with a Google account, and click **Get API key** → **Create API key**. Copy it.
+2. You'll enter it as `GEMINI_API_KEY` in step 3, along with `LLM_PROVIDER` = `gemini`.
+
+Trade-offs: the free tier has per-minute and per-day request limits (a full tailoring session uses about 6-10 requests), and **on the free tier Google may use what you submit, including resume text, to improve its products**. The app tells every user this on the upload screen. Rewrites are usually a bit less polished than Claude's; the honesty checks work the same either way.
+
+**Paid: Claude (Anthropic)**
 
 1. Go to **console.anthropic.com** → **API Keys** → **Create key** (name it `resume-tailor`). Copy it somewhere safe for step 3. It starts with `sk-ant-`.
-2. In the Console's billing/limits settings, **set a monthly spend limit** (for example $20). That's your hard ceiling no matter what happens.
+2. Add credits under **Billing** (the API is prepaid, separate from any Claude.ai subscription), and **set a monthly spend limit** (for example $20). That's your hard ceiling no matter what happens.
 
 ## 2. Free database on Neon (5 min)
 
@@ -34,7 +42,9 @@ The app stores accounts and saved resumes here, so they survive restarts.
 
    | Name | What to enter |
    |---|---|
-   | `ANTHROPIC_API_KEY` | the key from step 1 |
+   | `ANTHROPIC_API_KEY` | your Claude key from step 1, or leave empty if you use Gemini |
+   | `GEMINI_API_KEY` | your Gemini key from step 1, or leave empty if you use Claude |
+   | `LLM_PROVIDER` | `gemini` for Gemini, or leave empty for Claude |
    | `ADMIN_EMAIL` | your email: this becomes your login |
    | `ADMIN_PASSWORD` | a **new** password, 12+ characters, not one you use anywhere else |
    | `DATABASE_URL` | the Neon connection string from step 2 |
@@ -51,6 +61,12 @@ The app stores accounts and saved resumes here, so they survive restarts.
 **Optional: get a phone notification for new requests.** Install the free **ntfy** app, subscribe to a long, hard-to-guess topic name (e.g. `rt-requests-8f3k2m9q`), then in Render → your service → **Environment**, add `NOTIFY_WEBHOOK_URL` = `https://ntfy.sh/rt-requests-8f3k2m9q`. A Discord or Slack webhook URL works too.
 
 ---
+
+## Switching an existing deployment to free Gemini
+
+1. Get a Gemini key (step 1 above).
+2. Render → your service → **Environment** → add `GEMINI_API_KEY` = your key and `LLM_PROVIDER` = `gemini` → **Save Changes**.
+3. After the restart, the pill in the app's top bar reads **Gemini · gemini-...**. To go back to Claude, set `LLM_PROVIDER` to `anthropic`.
 
 ## Good to know
 

@@ -1010,9 +1010,10 @@
       S.health = me;
       renderAccount(me);
       const pill = $("#aiPill");
-      pill.textContent = me.ai_available ? `Claude · ${me.model}` : "AI off - no API key";
+      pill.textContent = me.ai_available ? `${me.provider} · ${me.model}` : "AI off - no API key";
       pill.className = `pill model ${me.ai_available ? "ok" : "off"}`;
-      if (!me.ai_available) $("#uploadHint").textContent = "No ANTHROPIC_API_KEY on the server: you'll get the ATS score and score levers; tailoring, the recruiter review and LaTeX editing need a key.";
+      if (me.privacy_note) $("#uploadHint").textContent = `Your resumes are saved to your account only. ${me.privacy_note}`;
+      if (!me.ai_available) $("#uploadHint").textContent = "No AI key on the server (ANTHROPIC_API_KEY or GEMINI_API_KEY): you'll get the ATS score and score levers; tailoring, the recruiter review and LaTeX editing need a key.";
     } catch (err) { activity(err.message, "error"); return; }
 
     let sid = null;

@@ -249,7 +249,7 @@ def session_state(session: Session) -> dict:
         "notices": session.notices,
         "ai_available": llm.available(),
         "target": {"min": config.TARGET_MIN, "max": config.TARGET_MAX},
-        "model": config.MODEL,
+        "model": llm.model_name(),
     }
 
 

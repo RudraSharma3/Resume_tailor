@@ -11,7 +11,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+      # AI provider: fill ANTHROPIC_API_KEY (Claude, paid) or GEMINI_API_KEY + LLM_PROVIDER=gemini (free tier).
       - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
         sync: false
       - key: ADMIN_EMAIL
         sync: false

@@ -1,15 +1,16 @@
-"""Claude API calls: JD profiling, resume normalization, recruiter review, tailoring and LaTeX editing."""
+"""AI calls (Claude or Google Gemini): JD profiling, resume normalization, recruiter review, tailoring, LaTeX."""
 
 from __future__ import annotations
 
 import json
+import os
 import re
 from contextvars import ContextVar
 from typing import Any, Callable
 
 import anthropic
 
-from . import config
+from . import config, gemini
 from .keywords import JDProfile
 from .prompts import (
     JD_PROFILE_SYSTEM,
@@ -39,8 +40,35 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
+def provider() -> str:
+    """'anthropic' or 'gemini'. LLM_PROVIDER picks explicitly; otherwise whichever key is set (Claude first)."""
+    choice = os.environ.get("LLM_PROVIDER", "").strip().lower()
+    if choice in {"gemini", "google"}:
+        return "gemini"
+    if choice in {"anthropic", "claude"}:
+        return "anthropic"
+    if not config.has_api_credentials() and gemini.api_key():
+        return "gemini"
+    return "anthropic"
+
+
 def available() -> bool:
-    return config.has_api_credentials()
+    return bool(gemini.api_key()) if provider() == "gemini" else config.has_api_credentials()
+
+
+def model_name() -> str:
+    return gemini.current_model() if provider() == "gemini" else config.MODEL
+
+
+def provider_label() -> str:
+    return "Gemini" if provider() == "gemini" else "Claude"
+
+
+def privacy_note() -> str:
+    if provider() == "gemini":
+        return ("AI provider: Google Gemini. On Google's free tier, Google may use what you submit "
+                "(including resume text) to improve its products.")
+    return ""
 
 
 # --- JSON schema helpers ------------------------------------------------------------------------
@@ -107,11 +135,45 @@ TAILOR_SCHEMA = _obj({
 
 def _call(system: str, content: list[dict], *, schema: dict | None = None, effort: str = "high",
           max_tokens: int = 32000) -> str:
-    """One streamed Messages request. Returns the concatenated text of the final message."""
-    global _fallbacks_enabled
+    """One AI request. Returns the response text (JSON text when `schema` is given)."""
     guard = call_guard.get()
     if guard is not None:
         guard()
+    if provider() == "gemini":
+        return _call_gemini(system, content, schema)
+    return _call_anthropic(system, content, schema=schema, effort=effort, max_tokens=max_tokens)
+
+
+def _call_gemini(system: str, content: list[dict], schema: dict | None) -> str:
+    if not gemini.api_key():
+        raise LLMError("Set GEMINI_API_KEY to use Gemini.")
+    text = "\n\n".join(block["text"] for block in content if block.get("type") == "text")
+    try:
+        return gemini.generate(system, text, schema)
+    except gemini.GeminiError as exc:
+        msg = exc.message.lower()
+        if exc.status == -1:
+            raise LLMError("Gemini declined this request (safety filter). Try rephrasing your instructions.") from exc
+        if exc.status == -2:
+            raise LLMError("Gemini's response was cut off (too long). Try a shorter resume or JD.") from exc
+        if "api key" in msg or exc.status == 401:
+            raise LLMError("Your Gemini API key was rejected. Check GEMINI_API_KEY.") from exc
+        if "location is not supported" in msg:
+            raise LLMError("Gemini isn't available from your server's region. Run the server in a US region.") from exc
+        if exc.status == 404:
+            raise LLMError(f"Gemini model '{gemini.current_model()}' wasn't found for this key. Remove GEMINI_MODEL to auto-pick one.") from exc
+        if exc.status == 429:
+            raise LLMError("Gemini's free-tier limit was reached. Wait a minute (per-minute limit) or until tomorrow (daily limit).") from exc
+        if exc.status == 403:
+            raise LLMError("This Gemini API key isn't allowed to use the API. Create a new key in Google AI Studio.") from exc
+        if exc.status == 0:
+            raise LLMError("Couldn't reach the Gemini API. Try again shortly.") from exc
+        raise LLMError(f"Gemini API error {exc.status}: {exc.message[:200]}") from exc
+
+
+def _call_anthropic(system: str, content: list[dict], *, schema: dict | None, effort: str, max_tokens: int) -> str:
+    """One streamed Messages request. Returns the concatenated text of the final message."""
+    global _fallbacks_enabled
     output_config: dict[str, Any] = {"effort": effort}
     if schema is not None:
         output_config["format"] = {"type": "json_schema", "schema": schema}
@@ -151,6 +213,11 @@ def _call(system: str, content: list[dict], *, schema: dict | None = None, effor
     except anthropic.RateLimitError as exc:
         raise LLMError("Rate limited by the Anthropic API. Wait a minute and try again.") from exc
     except anthropic.BadRequestError as exc:
+        if "credit balance" in str(exc).lower():
+            raise LLMError(
+                "Your Anthropic account is out of API credits. Add credits at console.anthropic.com (Billing), "
+                "or switch to the free Gemini option (LLM_PROVIDER=gemini)."
+            ) from exc
         raise LLMError(f"The API rejected the request: {getattr(exc, 'message', exc)}") from exc
     except anthropic.APIStatusError as exc:
         raise LLMError(f"Anthropic API error {exc.status_code}. Try again shortly.") from exc

@@ -30,7 +30,7 @@ See **[DEPLOY.md](DEPLOY.md)**: free hosting on Render + a free Neon database, a
 
 ## Run it on your own computer
 
-Requires Python 3.10+ and an [Anthropic API key](https://console.anthropic.com/).
+Requires Python 3.10+ and an AI key: [Anthropic](https://console.anthropic.com/) (Claude, paid) or [Google AI Studio](https://aistudio.google.com/) (Gemini, free tier).
 
 ```bash
 git clone https://github.com/RudraSharma3/Resume_tailor.git
@@ -57,7 +57,10 @@ It opens http://127.0.0.1:8000 with no sign-in (only your computer can reach it)
 
 | Variable | Default | |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | - | required for AI steps |
+| `ANTHROPIC_API_KEY` | - | Claude key for the AI steps (paid) |
+| `GEMINI_API_KEY` | - | Google Gemini key: free alternative to Claude |
+| `LLM_PROVIDER` | auto | `gemini` or `anthropic`; needed only if both keys are set |
+| `GEMINI_MODEL` | auto | pin a Gemini model; default picks the best Flash model your key can use |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | - | turns on accounts; required when hosted (password 12+ chars) |
 | `DATABASE_URL` | SQLite in `data/` | Postgres connection string for hosting |
 | `AI_DAILY_LIMIT` | `40` | AI steps per approved user per day (admin unlimited, `0` = no cap) |
@@ -81,7 +84,8 @@ resume_tailor/
   keywords.py              keyword matching (synonyms, plurals, acronyms) + offline JD extractor
   resume_struct.py         sections, bullets, contact info, years of experience
   parsers.py               PDF / DOCX / TXT / TEX -> text
-  llm.py, prompts.py       Claude calls (structured JSON outputs, prompt caching, refusal fallback)
+  llm.py, prompts.py       AI calls: Claude (structured outputs, caching, refusal fallback) or Gemini
+  gemini.py                Gemini REST client with model auto-pick and free-tier fallback
   engine.py                sessions, iterations, confirmations, LaTeX step
   auth.py                  accounts, admin approval, rate limits, daily AI cap
   db.py                    SQLite / Postgres storage

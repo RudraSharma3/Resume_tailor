@@ -97,3 +97,17 @@ def test_latex_output_parsing(wire):
     tex, notes = llm.edit_latex(original_tex="x", tailored_resume="y", facts=[])
     assert tex.startswith("\\documentclass") and tex.endswith("\\end{document}\n")
     assert notes == ["Changed summary", "Check page count"]
+
+
+def test_out_of_credit_message(monkeypatch):
+    def handler(request):
+        body = {"type": "error", "error": {"type": "invalid_request_error",
+                "message": "Your credit balance is too low to access the Anthropic API."}}
+        return httpx2.Response(400, json=body)
+
+    client = anthropic.Anthropic(api_key="k", http_client=anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(handler)), max_retries=0)
+    monkeypatch.setattr(llm, "_client", client)
+    monkeypatch.setattr(llm, "_fallbacks_enabled", False)
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    with pytest.raises(llm.LLMError, match="out of API credits"):
+        llm.normalize_resume("text")

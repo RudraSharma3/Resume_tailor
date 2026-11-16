@@ -19,7 +19,10 @@ def main() -> None:
         # (unless ADMIN_EMAIL is set, which turns accounts on).
         os.environ.setdefault("RESUME_TAILOR_LOCAL", "1")
     print(f"\n  Resume Tailor running at {url}")
-    print(f"  Model: {config.MODEL} | AI {'enabled' if config.has_api_credentials() else 'DISABLED (set ANTHROPIC_API_KEY)'}\n")
+    from resume_tailor import llm
+
+    print(f"  AI: {llm.provider_label()} ({llm.model_name()}) | "
+          f"{'enabled' if llm.available() else 'DISABLED (set ANTHROPIC_API_KEY or GEMINI_API_KEY)'}\n")
     if "--no-browser" not in sys.argv:
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     uvicorn.run("resume_tailor.server:app", host=config.HOST, port=config.PORT, log_level="warning")

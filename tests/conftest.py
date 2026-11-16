@@ -31,7 +31,8 @@ def isolated_data_dir(tmp_path, monkeypatch):
     """Fresh SQLite database per test, single-user local mode unless a test turns accounts on."""
     from resume_tailor import auth, db, engine
 
-    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "AI_DAILY_LIMIT", "ALLOW_SIGNUP", "NOTIFY_WEBHOOK_URL", "DATABASE_URL"):
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "AI_DAILY_LIMIT", "ALLOW_SIGNUP", "NOTIFY_WEBHOOK_URL", "DATABASE_URL",
+                "LLM_PROVIDER", "GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("RESUME_TAILOR_LOCAL", "1")
     pg_url = os.environ.get("TEST_DATABASE_URL")  # run the suite against Postgres too
