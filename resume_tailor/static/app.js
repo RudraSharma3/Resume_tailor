@@ -43,8 +43,14 @@
   };
 
   // ------------------------------------------------------------------ network
+  const HDR = { "X-Requested-With": "fetch" };
+  function signedOut(res) {
+    if (res.status === 401) { location.href = "/login"; return true; }
+    return false;
+  }
   async function api(url, opts = {}) {
-    const res = await fetch(url, opts);
+    const res = await fetch(url, { ...opts, headers: { ...HDR, ...(opts.headers || {}) } });
+    if (signedOut(res)) throw new Error("Your sign-in expired. Redirecting…");
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(errorText(data, res));
     return data;
@@ -60,8 +66,9 @@
     const res = await fetch(url, {
       method: "POST",
       body: isForm ? body : JSON.stringify(body || {}),
-      headers: isForm ? {} : { "Content-Type": "application/json" },
+      headers: isForm ? HDR : { ...HDR, "Content-Type": "application/json" },
     });
+    if (signedOut(res)) throw new Error("Your sign-in expired. Redirecting…");
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(errorText(data, res));
@@ -914,15 +921,99 @@
     $("#texResult").scrollIntoView({ behavior: "smooth", block: "start" });
   }));
 
+  // ------------------------------------------------------------------ account menus
+  const when = (t) => new Date(t * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  function closeMenus(except) {
+    ["#historyMenu", "#userMenu"].forEach((sel) => { if (sel !== except) $(sel).hidden = true; });
+  }
+  document.addEventListener("click", (e) => { if (!e.target.closest(".menu-wrap")) closeMenus(); });
+
+  $("#historyBtn").addEventListener("click", async () => {
+    const menu = $("#historyMenu");
+    closeMenus("#historyMenu");
+    if (!menu.hidden) { menu.hidden = true; return; }
+    menu.hidden = false;
+    menu.replaceChildren(el("div", { class: "small muted" }, "Loading…"));
+    try {
+      const { sessions } = await api("/api/sessions");
+      const list = el("div", { class: "list" });
+      if (!sessions.length) list.append(el("div", { class: "empty" }, "Nothing saved yet."));
+      for (const item of sessions) {
+        const open = el("button", { class: "item", onclick: () => openSession(item.id) },
+          el("span", { class: "t", title: item.title }, item.title || "Untitled"),
+          el("span", { class: "s" }, `Updated ${when(item.updated_at)}`, item.id === S.sid ? " · open now" : ""),
+          el("span", { class: "sc" }, item.score != null ? String(Math.round(item.score)) : "-"));
+        list.append(open);
+      }
+      menu.replaceChildren(el("div", { class: "small", style: "font-weight:650" }, "Your saved resumes"), list,
+        S.sid ? el("button", { class: "btn sm ghost", onclick: deleteCurrent }, "Delete the one that's open") : null);
+    } catch (err) { menu.replaceChildren(el("div", { class: "small" }, err.message)); }
+  });
+
+  async function openSession(id) {
+    closeMenus();
+    try {
+      const state = await api(`/api/session/${id}`);
+      S.sid = id;
+      S.cache = {};
+      S.decisions = {};
+      remember();
+      $("#jdText").value = state.jd_text || "";
+      $("#texText").value = "";
+      if (state.version) { applyState(state); $("#step-tailor").scrollIntoView({ behavior: "smooth" }); }
+    } catch (err) { activity(err.message, "error"); }
+  }
+
+  async function deleteCurrent() {
+    if (!S.sid || !confirm("Delete this resume session and all its versions? This can't be undone.")) return;
+    try {
+      await api(`/api/session/${S.sid}`, { method: "DELETE" });
+      try { localStorage.removeItem("rt_sid"); } catch (_) { /* ignore */ }
+      location.href = "/";
+    } catch (err) { activity(err.message, "error"); }
+  }
+
+  $("#userBtn").addEventListener("click", () => {
+    const m = $("#userMenu");
+    closeMenus("#userMenu");
+    m.hidden = !m.hidden;
+    if (!m.hidden) api("/api/me").then(renderAccount).catch(() => {});  // fresh AI-usage count
+  });
+  $("#logoutBtn").addEventListener("click", async () => {
+    try { await api("/api/auth/logout", { method: "POST" }); } catch (_) { /* ignore */ }
+    try { localStorage.removeItem("rt_sid"); } catch (_) { /* ignore */ }
+    location.href = "/login";
+  });
+
+  function renderAccount(me) {
+    const u = me.user;
+    if (!me.local) {
+      $("#userBtn").hidden = false;
+      $("#userBtn").textContent = (u.name || u.email || "?").trim().charAt(0).toUpperCase();
+      $("#userBtn").title = `${u.name} (${u.email})`;
+      $("#userEmail").textContent = `${u.name} · ${u.email}`;
+      $("#usageInfo").textContent = me.ai_daily_limit
+        ? `AI steps today: ${me.ai_calls_today} of ${me.ai_daily_limit}`
+        : `AI steps today: ${me.ai_calls_today} (no limit)`;
+    }
+    if (u.is_admin && !me.local) {
+      $("#adminLink").hidden = false;
+      $("#pendingCount").hidden = !me.pending_requests;
+      $("#pendingCount").textContent = me.pending_requests;
+    }
+  }
+
   // ------------------------------------------------------------------ boot
   async function boot() {
     try {
-      S.health = await api("/api/health");
+      const me = await api("/api/me");
+      S.health = me;
+      renderAccount(me);
       const pill = $("#aiPill");
-      pill.textContent = S.health.ai_available ? `Claude · ${S.health.model}` : "Offline - no API key";
-      pill.className = `pill model ${S.health.ai_available ? "ok" : "off"}`;
-      if (!S.health.ai_available) $("#uploadHint").textContent = "No ANTHROPIC_API_KEY found: you'll get the ATS score and score levers; tailoring, the recruiter review and LaTeX editing need a key.";
-    } catch (_) { /* server down; analyze will surface the error */ }
+      pill.textContent = me.ai_available ? `Claude · ${me.model}` : "AI off - no API key";
+      pill.className = `pill model ${me.ai_available ? "ok" : "off"}`;
+      if (!me.ai_available) $("#uploadHint").textContent = "No ANTHROPIC_API_KEY on the server: you'll get the ATS score and score levers; tailoring, the recruiter review and LaTeX editing need a key.";
+    } catch (err) { activity(err.message, "error"); return; }
 
     let sid = null;
     const m = location.hash.match(/s=([a-f0-9]{32})/);
@@ -938,6 +1029,7 @@
       applyState(state);
     } catch (_) {
       try { localStorage.removeItem("rt_sid"); } catch (__) { /* ignore */ }
+      history.replaceState(null, "", location.pathname);
     }
   }
   boot();

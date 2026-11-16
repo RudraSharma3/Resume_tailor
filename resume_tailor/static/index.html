@@ -20,6 +20,19 @@
     <div class="top-actions">
       <span class="pill model" id="aiPill">Checking AI…</span>
       <button class="btn sm ghost" id="newBtn" title="Start a new analysis">New</button>
+      <div class="menu-wrap">
+        <button class="btn sm ghost" id="historyBtn" title="Your saved resumes">My resumes</button>
+        <div class="menu card" id="historyMenu" hidden></div>
+      </div>
+      <a class="btn sm ghost" id="adminLink" href="/admin" hidden>Admin <span class="count hot" id="pendingCount" hidden></span></a>
+      <div class="menu-wrap">
+        <button class="btn sm ghost avatar" id="userBtn" hidden></button>
+        <div class="menu card" id="userMenu" hidden>
+          <div class="small" id="userEmail"></div>
+          <div class="tiny muted" id="usageInfo"></div>
+          <button class="btn sm" id="logoutBtn">Sign out</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -55,7 +68,7 @@
       </div>
       <div class="row" style="margin-top:16px">
         <button class="btn primary" id="analyzeBtn"><span class="spinner spin"></span>Analyze match</button>
-        <span class="small muted" id="uploadHint">Your files stay on this computer. Only the text is sent to Claude for the AI steps.</span>
+        <span class="small muted" id="uploadHint">Your resumes are saved to your account only. Their text is sent to Claude for the AI steps.</span>
       </div>
     </section>
 

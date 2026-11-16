@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Tailor · Admin</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232a78d6'/><text x='16' y='21' font-size='14' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'>RT</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" style="text-decoration:none;color:inherit"><span class="brand-mark">RT</span><span>Resume Tailor</span></a>
+    <span class="pill">Admin</span>
+    <span class="spacer"></span>
+    <a class="btn sm" href="/">Back to the tool</a>
+  </header>
+  <main>
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Access requests</div>
+          <h2>Waiting for your approval</h2>
+        </div>
+        <p id="limitInfo"></p>
+      </div>
+      <div class="stack" id="pending"></div>
+    </section>
+    <section>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Accounts</div>
+          <h2>Everyone with an account</h2>
+        </div>
+        <p>Turning access off signs the person out everywhere immediately.</p>
+      </div>
+      <div class="card" style="padding:0;overflow-x:auto">
+        <table class="users" id="users"></table>
+      </div>
+    </section>
+  </main>
+  <div class="activity" id="activity" hidden><span id="activityText"></span></div>
+  <script src="/static/admin.js"></script>
+</body>
+</html>

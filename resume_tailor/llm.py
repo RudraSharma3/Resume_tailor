@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from contextvars import ContextVar
+from typing import Any, Callable
 
 import anthropic
 
@@ -26,6 +27,9 @@ class LLMError(RuntimeError):
 
 _client: anthropic.Anthropic | None = None
 _fallbacks_enabled = config.USE_FALLBACKS
+
+# Called before every API request; the server sets it to enforce each user's daily AI limit.
+call_guard: ContextVar[Callable[[], None] | None] = ContextVar("call_guard", default=None)
 
 
 def get_client() -> anthropic.Anthropic:
@@ -105,6 +109,9 @@ def _call(system: str, content: list[dict], *, schema: dict | None = None, effor
           max_tokens: int = 32000) -> str:
     """One streamed Messages request. Returns the concatenated text of the final message."""
     global _fallbacks_enabled
+    guard = call_guard.get()
+    if guard is not None:
+        guard()
     output_config: dict[str, Any] = {"effort": effort}
     if schema is not None:
         output_config["format"] = {"type": "json_schema", "schema": schema}

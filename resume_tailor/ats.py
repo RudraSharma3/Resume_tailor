@@ -421,7 +421,7 @@ class ATSReport:
         hits = sorted(f.keyword_hits, key=lambda h: (-h.weight, h.term))
         return {
             "score": round(self.score, 1),
-            "display_score": int(round(self.score)),
+            "display_score": int(self.score + 0.5),  # round half up, same as the UI's Math.round
             "band": score_band(self.score),
             "components": [asdict(c) | {"score": round(c.score, 1)} for c in self.components],
             "keywords": {

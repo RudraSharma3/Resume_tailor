@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Tailor · Sign in</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232a78d6'/><text x='16' y='21' font-size='14' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'>RT</text></svg>">
+</head>
+<body class="auth-page">
+  <div class="auth-wrap">
+    <div class="brand auth-brand"><span class="brand-mark">RT</span><span>Resume Tailor</span></div>
+    <p class="secondary auth-tag">ATS scoring and honest resume tailoring. Access is by invitation: request it and the owner approves you.</p>
+
+    <div class="notice warn" id="configProblem" hidden></div>
+
+    <div class="card auth-card" id="authCard">
+      <div class="segmented auth-tabs" role="tablist">
+        <button type="button" class="on" data-tab="login" role="tab">Sign in</button>
+        <button type="button" data-tab="register" role="tab" id="registerTab">Request access</button>
+      </div>
+
+      <form id="loginForm" class="stack" autocomplete="on">
+        <label class="field">Email<input type="text" name="email" inputmode="email" autocomplete="username" required></label>
+        <label class="field">Password<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="btn primary" type="submit"><span class="spinner spin"></span>Sign in</button>
+      </form>
+
+      <form id="registerForm" class="stack" hidden autocomplete="on">
+        <label class="field">Name<input type="text" name="name" autocomplete="name" required maxlength="80"></label>
+        <label class="field">Email<input type="text" name="email" inputmode="email" autocomplete="username" required></label>
+        <label class="field">Password (10+ characters)<input type="password" name="password" autocomplete="new-password" required minlength="10"></label>
+        <label class="field">Note for the owner (optional)<textarea name="note" rows="2" maxlength="500" placeholder="e.g. Hi, it's Priya from college - applying for SDE roles."></textarea></label>
+        <button class="btn primary" type="submit"><span class="spinner spin"></span>Request access</button>
+      </form>
+
+      <div class="auth-msg" id="authMsg" role="status" hidden></div>
+    </div>
+  </div>
+  <script src="/static/login.js"></script>
+</body>
+</html>

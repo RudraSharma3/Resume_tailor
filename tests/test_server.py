@@ -4,6 +4,8 @@ from fastapi.testclient import TestClient
 
 from resume_tailor.server import app
 
+HEADERS = {"X-Requested-With": "fetch"}
+
 
 def sse(response):
     events = []
@@ -21,7 +23,7 @@ def create(client, resume_text, jd_text):
 
 
 def test_full_flow(fake_llm, resume_text, jd_text, tex_text):
-    client = TestClient(app)
+    client = TestClient(app, headers=HEADERS)
     sid = create(client, resume_text, jd_text)
 
     events = sse(client.post(f"/api/session/{sid}/analyze"))
@@ -80,7 +82,7 @@ def test_unverified_number_is_flagged_and_fed_back(fake_llm, resume_text, jd_tex
 
     original = llm.tailor_iteration
     monkeypatch.setattr(llm, "tailor_iteration", lambda **kw: original(**kw, inject_fake=True))
-    client = TestClient(app)
+    client = TestClient(app, headers=HEADERS)
     sid = create(client, resume_text, jd_text)
     sse(client.post(f"/api/session/{sid}/analyze"))
     events = sse(client.post(f"/api/session/{sid}/iterate", json={"mode": "single", "phase": "impact"}))
@@ -99,7 +101,7 @@ def test_unverified_number_is_flagged_and_fed_back(fake_llm, resume_text, jd_tex
 
 
 def test_revert_and_manual_edit(fake_llm, resume_text, jd_text):
-    client = TestClient(app)
+    client = TestClient(app, headers=HEADERS)
     sid = create(client, resume_text, jd_text)
     sse(client.post(f"/api/session/{sid}/analyze"))
     sse(client.post(f"/api/session/{sid}/iterate", json={"mode": "single"}))
@@ -116,7 +118,7 @@ def test_offline_mode_scores_without_ai(resume_text, jd_text, monkeypatch):
     from resume_tailor import llm
 
     monkeypatch.setattr(llm, "available", lambda: False)
-    client = TestClient(app)
+    client = TestClient(app, headers=HEADERS)
     sid = create(client, resume_text, jd_text)
     done = sse(client.post(f"/api/session/{sid}/analyze"))[-1]
     assert done["state"]["profile"]["source"] == "heuristic"
@@ -127,7 +129,7 @@ def test_offline_mode_scores_without_ai(resume_text, jd_text, monkeypatch):
 
 
 def test_bad_inputs():
-    client = TestClient(app)
+    client = TestClient(app, headers=HEADERS)
     r = client.post("/api/session", data={"resume_text": "too short", "jd_text": "also short"})
     assert r.status_code == 400 and "error" in r.json()
     assert client.get("/api/session/" + "0" * 32).status_code == 404

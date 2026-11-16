@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -27,12 +28,22 @@ def tex_text() -> str:
 
 @pytest.fixture(autouse=True)
 def isolated_data_dir(tmp_path, monkeypatch):
-    from resume_tailor import config, engine
+    """Fresh SQLite database per test, single-user local mode unless a test turns accounts on."""
+    from resume_tailor import auth, db, engine
 
-    monkeypatch.setattr(config, "SESSIONS_DIR", tmp_path / "sessions")
-    (tmp_path / "sessions").mkdir()
+    for var in ("ADMIN_EMAIL", "ADMIN_PASSWORD", "AI_DAILY_LIMIT", "ALLOW_SIGNUP", "NOTIFY_WEBHOOK_URL", "DATABASE_URL"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("RESUME_TAILOR_LOCAL", "1")
+    pg_url = os.environ.get("TEST_DATABASE_URL")  # run the suite against Postgres too
+    database = db.Database(pg_url or f"sqlite:///{tmp_path / 'test.db'}")
+    if pg_url:
+        for table in ("users", "auth_sessions", "resume_sessions", "ai_usage"):
+            database.execute(f"DELETE FROM {table}")
+    db.set_db(database)
     monkeypatch.setattr(engine, "STORE", engine.SessionStore())
+    auth.reset_rate_limits()
     yield
+    db.set_db(None)
 
 
 def _to_markdown(raw: str) -> str:

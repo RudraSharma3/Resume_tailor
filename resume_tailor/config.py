@@ -44,7 +44,8 @@ TARGET_MAX = float(os.environ.get("RESUME_TAILOR_TARGET_MAX", "85"))
 MAX_AUTO_ITERATIONS = int(os.environ.get("RESUME_TAILOR_MAX_ITERATIONS", "4"))
 
 DATA_DIR = Path(os.environ.get("RESUME_TAILOR_DATA_DIR", str(ROOT / "data")))
-SESSIONS_DIR = DATA_DIR / "sessions"
+# Postgres URL (e.g. a free Neon database) for hosted deployments; empty = SQLite file in DATA_DIR.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 HOST = os.environ.get("RESUME_TAILOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("RESUME_TAILOR_PORT", "8000"))

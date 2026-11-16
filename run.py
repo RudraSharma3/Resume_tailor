@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import threading
 import webbrowser
@@ -13,6 +14,10 @@ from resume_tailor import config
 
 def main() -> None:
     url = f"http://{config.HOST}:{config.PORT}"
+    if config.HOST in {"127.0.0.1", "localhost", "::1"}:
+        # Only this computer can reach the app, so it runs as a single user with no sign-in
+        # (unless ADMIN_EMAIL is set, which turns accounts on).
+        os.environ.setdefault("RESUME_TAILOR_LOCAL", "1")
     print(f"\n  Resume Tailor running at {url}")
     print(f"  Model: {config.MODEL} | AI {'enabled' if config.has_api_credentials() else 'DISABLED (set ANTHROPIC_API_KEY)'}\n")
     if "--no-browser" not in sys.argv:

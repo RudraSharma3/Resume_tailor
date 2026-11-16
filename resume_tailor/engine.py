@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import json
 import re
 import threading
@@ -13,6 +14,7 @@ from typing import Any, Callable, Iterator
 
 from . import config, guards, llm
 from .ats import score_resume
+from .db import get_db
 from .diffing import diff_stats, line_diff
 from .keywords import JDProfile, heuristic_profile
 from .parsers import clean_text, extract_text, latex_to_text
@@ -44,6 +46,7 @@ class Session:
     tex: dict | None = None
     notices: list[str] = field(default_factory=list)
     manual_sources: list[str] = field(default_factory=list)  # text the user wrote themselves
+    owner_id: str = "local"
 
     # ------------------------------------------------------------------
     @property
@@ -72,11 +75,11 @@ class Session:
 
 
 class SessionStore:
+    """Resume sessions in the database, one row per session, owned by a user."""
+
     def __init__(self) -> None:
-        self._sessions: dict[str, Session] = {}
         self._locks: dict[str, threading.Lock] = {}
         self._guard = threading.Lock()
-        config.SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
     def lock(self, sid: str) -> threading.Lock:
         with self._guard:
@@ -85,26 +88,39 @@ class SessionStore:
     def get(self, sid: str) -> Session:
         if not re.fullmatch(r"[a-f0-9]{32}", sid or ""):
             raise KeyError(sid)
-        if sid in self._sessions:
-            return self._sessions[sid]
-        path = config.SESSIONS_DIR / f"{sid}.json"
-        if not path.exists():
+        row = get_db().one("SELECT data FROM resume_sessions WHERE id = ?", (sid,))
+        if not row:
             raise KeyError(sid)
-        session = Session.from_json(json.loads(path.read_text(encoding="utf-8")))
-        self._sessions[sid] = session
-        return session
+        return Session.from_json(json.loads(row["data"]))
 
     def save(self, session: Session) -> None:
-        self._sessions[session.id] = session
-        path = config.SESSIONS_DIR / f"{session.id}.json"
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(session.to_json(), ensure_ascii=False), encoding="utf-8")
-        tmp.replace(path)
+        title = session.resume_filename
+        if session.profile:
+            title = " @ ".join(p for p in (session.profile.get("job_title"), session.profile.get("company")) if p) or title
+        score = session.versions[session.current]["report"]["score"] if session.versions else None
+        now = time.time()
+        get_db().execute(
+            "INSERT INTO resume_sessions (id, owner_id, created_at, updated_at, title, score, data) VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT (id) DO UPDATE SET updated_at = excluded.updated_at, title = excluded.title, "
+            "score = excluded.score, data = excluded.data",
+            (session.id, session.owner_id, session.created_at, now, title[:200], score,
+             json.dumps(session.to_json(), ensure_ascii=False)),
+        )
 
     def create(self, **kwargs: Any) -> Session:
         session = Session(id=uuid.uuid4().hex, created_at=time.time(), **kwargs)
         self.save(session)
         return session
+
+    def list_for(self, owner_id: str) -> list[dict]:
+        return get_db().execute(
+            "SELECT id, created_at, updated_at, title, score FROM resume_sessions WHERE owner_id = ? "
+            "ORDER BY updated_at DESC LIMIT 100",
+            (owner_id,),
+        )
+
+    def delete(self, sid: str) -> None:
+        get_db().execute("DELETE FROM resume_sessions WHERE id = ?", (sid,))
 
 
 STORE = SessionStore()
@@ -115,7 +131,7 @@ STORE = SessionStore()
 
 def create_session(
     resume_filename: str | None, resume_bytes: bytes | None, resume_text: str | None,
-    jd_filename: str | None, jd_bytes: bytes | None, jd_text: str | None,
+    jd_filename: str | None, jd_bytes: bytes | None, jd_text: str | None, owner_id: str = "local",
 ) -> Session:
     tex_source = None
     if resume_bytes:
@@ -143,7 +159,7 @@ def create_session(
         raise ValueError("The job description looks too short. Paste the full JD (responsibilities + requirements).")
     if len(raw.split()) < 50:
         raise ValueError("The resume text looks too short - check the file uploaded correctly.")
-    return STORE.create(resume_filename=resume_filename or "resume", resume_raw=raw, jd_text=jd, resume_tex=tex_source)
+    return STORE.create(resume_filename=resume_filename or "resume", resume_raw=raw, jd_text=jd, resume_tex=tex_source, owner_id=owner_id)
 
 
 def _sources(session: Session) -> list[str]:
@@ -253,8 +269,9 @@ def analyze(session: Session, progress: ProgressFn) -> dict:
     if ai:
         progress("Reading the job description and cleaning up your resume text...")
         with ThreadPoolExecutor(max_workers=2) as pool:
-            fut_profile = pool.submit(llm.extract_jd_profile, session.jd_text)
-            fut_norm = pool.submit(llm.normalize_resume, session.resume_raw)
+            # copy_context keeps the per-user AI-usage guard active inside the worker threads
+            fut_profile = pool.submit(contextvars.copy_context().run, llm.extract_jd_profile, session.jd_text)
+            fut_norm = pool.submit(contextvars.copy_context().run, llm.normalize_resume, session.resume_raw)
             profile = fut_profile.result()
             try:
                 normalized = fut_norm.result()

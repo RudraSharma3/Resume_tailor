@@ -24,7 +24,11 @@ A local web app that tailors your resume to a job description **without inventin
 
 > The score estimates how keyword-based ATS filters (Workday, Greenhouse, Lever, iCIMS, Taleo) and recruiters screen. No company publishes its exact formula, so use it to compare versions of your resume, not as a guarantee.
 
-## Setup
+## Put it online (private, with access approval)
+
+See **[DEPLOY.md](DEPLOY.md)**: free hosting on Render + a free Neon database, about 20 minutes. Only you can sign in until you approve someone; every user sees only their own resumes and has a daily AI cap.
+
+## Run it on your own computer
 
 Requires Python 3.10+ and an [Anthropic API key](https://console.anthropic.com/).
 
@@ -37,7 +41,7 @@ cp .env.example .env      # then put your key in .env
 python run.py
 ```
 
-It opens http://127.0.0.1:8000. Without a key it still gives you the ATS score and score levers (using an offline keyword extractor). Tailoring, the recruiter review and LaTeX editing need the key.
+It opens http://127.0.0.1:8000 with no sign-in (only your computer can reach it). Without a key it still gives you the ATS score and score levers (using an offline keyword extractor). Tailoring, the recruiter review and LaTeX editing need the key.
 
 ## Using it
 
@@ -54,12 +58,17 @@ It opens http://127.0.0.1:8000. Without a key it still gives you the ATS score a
 | Variable | Default | |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | - | required for AI steps |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | - | turns on accounts; required when hosted (password 12+ chars) |
+| `DATABASE_URL` | SQLite in `data/` | Postgres connection string for hosting |
+| `AI_DAILY_LIMIT` | `40` | AI steps per approved user per day (admin unlimited, `0` = no cap) |
+| `ALLOW_SIGNUP` | `1` | `0` hides "Request access" |
+| `NOTIFY_WEBHOOK_URL` | - | ntfy / Discord / Slack URL pinged on new access requests |
 | `RESUME_TAILOR_MODEL` | `claude-opus-5-5` | any Claude model ID you have access to |
 | `RESUME_TAILOR_TARGET_MIN` / `_MAX` | `82` / `85` | auto-tailor target band |
 | `RESUME_TAILOR_MAX_ITERATIONS` | `4` | cap for one auto-tailor run |
 | `RESUME_TAILOR_PORT` | `8000` | |
 
-Cost: each AI step is one Claude request. A rough estimate for a full session with the default model (analysis, 3-4 iterations, a recruiter re-check and the LaTeX step) is $1-2; `RESUME_TAILOR_MODEL=claude-sonnet-5-5` costs about half. Sessions are saved under `data/` (git-ignored), so a page reload keeps your work.
+Cost: each AI step is one Claude request. A rough estimate for a full session with the default model (analysis, 3-4 iterations, a recruiter re-check and the LaTeX step) is $1-2; `RESUME_TAILOR_MODEL=claude-sonnet-5-5` costs about half. Work is saved (SQLite in `data/` locally, Postgres when hosted), so a reload or another device picks up where you left off via **My resumes**.
 
 ## Project layout
 
@@ -74,9 +83,11 @@ resume_tailor/
   parsers.py               PDF / DOCX / TXT / TEX -> text
   llm.py, prompts.py       Claude calls (structured JSON outputs, prompt caching, refusal fallback)
   engine.py                sessions, iterations, confirmations, LaTeX step
-  server.py                FastAPI + server-sent events
+  auth.py                  accounts, admin approval, rate limits, daily AI cap
+  db.py                    SQLite / Postgres storage
+  server.py                FastAPI + server-sent events, security headers
   static/                  the UI (plain HTML/CSS/JS)
 tests/                     pytest suite (AI calls are mocked; no key needed)
 ```
 
-Run the tests with `pip install pytest httpx && python -m pytest`.
+Run the tests with `pip install pytest httpx && python -m pytest` (set `TEST_DATABASE_URL` to a Postgres URL to run them against Postgres).
