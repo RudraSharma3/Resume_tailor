@@ -1,0 +1,52 @@
+\documentclass[letterpaper,11pt]{article}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{enumitem}
+\newcommand{\resumeItem}[1]{\item\small{{#1 \vspace{-2pt}}}}
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+\begin{document}
+\begin{center}
+    \textbf{\Huge \scshape Alex Morgan} \\ \vspace{1pt}
+    \small +1 555 201 4477 $|$ \href{mailto:alex.morgan@example.com}{\underline{alex.morgan@example.com}} $|$
+    \href{https://linkedin.com/in/alexmorgan-dev}{\underline{linkedin.com/in/alexmorgan-dev}}
+\end{center}
+
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Brightline Logistics}{Jun 2021 -- Present}
+      {Software Engineer}{Austin, TX}
+      \resumeItemListStart
+        \resumeItem{Responsible for maintaining the shipment tracking service written in Python and Flask.}
+        \resumeItem{Built REST endpoints used by the customer portal, cutting page load time from 3.2s to 1.1s.}
+        \resumeItem{Worked on migrating cron jobs to AWS Lambda; reduced cost by 30\%.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University of Texas at Dallas}{Dallas, TX}
+      {B.S. Computer Science}{2018}
+  \resumeSubHeadingListEnd
+
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, JavaScript, SQL} \\
+     \textbf{Tools}{: Docker, AWS, Git, PyTest}
+    }}
+ \end{itemize}
+\end{document}

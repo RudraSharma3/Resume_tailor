@@ -1,0 +1,28 @@
+Alex Morgan
+alex.morgan@example.com | +1 555 201 4477 | linkedin.com/in/alexmorgan-dev | Austin, TX
+
+SUMMARY
+Software engineer with experience building web applications and internal tools. Comfortable across the stack and with cloud deployments.
+
+EXPERIENCE
+Software Engineer | Brightline Logistics | Austin, TX | Jun 2021 - Present
+• Responsible for maintaining the shipment tracking service written in Python and Flask.
+• Built REST endpoints used by the customer portal, cutting page load time from 3.2s to 1.1s.
+• Worked on migrating cron jobs to AWS Lambda.
+• Wrote unit tests with PyTest and set up GitHub Actions for automated test runs.
+• Helped onboard 4 new engineers to the codebase.
+
+Junior Developer | Pixel Forge Studio | Remote | Jan 2019 - May 2021
+• Developed client websites with React and Node.js for 12 small-business customers.
+• Designed a PostgreSQL schema for the booking system.
+• Assisted with deployments on Heroku and DigitalOcean.
+
+PROJECTS
+Inventory Bot | Python, Docker
+• Created a Slack bot that answers stock-level questions from a Postgres database.
+
+EDUCATION
+B.S. Computer Science | University of Texas at Dallas | 2018
+
+SKILLS
+Python, JavaScript, React, Node.js, Flask, PostgreSQL, Docker, AWS, Git, PyTest

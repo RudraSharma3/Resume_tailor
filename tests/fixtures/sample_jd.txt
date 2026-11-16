@@ -1,0 +1,25 @@
+Backend Software Engineer - Platform Team
+Northwind Freight
+
+About the role
+We are hiring a Backend Software Engineer to build and scale the services behind our freight marketplace. You will design APIs, own services end to end, and work cross-functional with product and data teams.
+
+What you'll do
+- Design, build and operate high-throughput REST APIs and microservices in Python.
+- Own services in production on AWS (Lambda, ECS, S3) with strong observability.
+- Improve reliability and performance of event-driven pipelines built on Kafka.
+- Write well-tested code and champion CI/CD best practices.
+- Mentor engineers and participate in code review.
+
+Requirements
+- 3+ years of professional software engineering experience.
+- Strong Python skills (Flask, FastAPI or Django).
+- Experience with PostgreSQL and SQL query optimization.
+- Hands-on experience with Docker and Kubernetes.
+- Experience with AWS.
+- Bachelor's degree in Computer Science or related field.
+
+Nice to have
+- Terraform or other infrastructure as code tools.
+- Experience with Kafka or other message queues.
+- Datadog or Prometheus monitoring.

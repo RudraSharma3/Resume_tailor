@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resume Tailor</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232a78d6'/><text x='16' y='21' font-size='14' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'>RT</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">RT</span><span>Resume Tailor</span></div>
+    <nav class="stepper" id="stepper">
+      <a href="#step-upload" data-step="upload" class="active"><span class="n">1</span><span class="label">Upload</span></a>
+      <a href="#step-analysis" data-step="analysis" class="locked"><span class="n">2</span><span class="label">ATS &amp; recruiter</span></a>
+      <a href="#step-tailor" data-step="tailor" class="locked"><span class="n">3</span><span class="label">Tailor</span></a>
+      <a href="#step-levers" data-step="levers" class="locked"><span class="n">4</span><span class="label">Score levers</span></a>
+      <a href="#step-tex" data-step="tex" class="locked"><span class="n">5</span><span class="label">LaTeX</span></a>
+    </nav>
+    <div class="top-actions">
+      <span class="pill model" id="aiPill">Checking AI…</span>
+      <button class="btn sm ghost" id="newBtn" title="Start a new analysis">New</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 1. Upload -->
+    <section id="step-upload">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 1</div>
+          <h2>Your resume and the job description</h2>
+        </div>
+        <p>PDF, DOCX, TXT, Markdown or LaTeX (.tex) all work.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card stack">
+          <h3>Resume</h3>
+          <label class="dropzone" id="resumeDrop">
+            <input type="file" id="resumeFile" accept=".pdf,.docx,.txt,.md,.markdown,.tex,.rtf" hidden>
+            <strong id="resumeDropTitle">Drop your resume here or click to browse</strong>
+            <span class="small muted" id="resumeDropSub">PDF · DOCX · TXT · MD · TEX</span>
+          </label>
+          <div class="or">or paste it</div>
+          <textarea id="resumeText" rows="8" placeholder="Paste your resume text (or the full .tex source)…"></textarea>
+        </div>
+        <div class="card stack">
+          <h3>Job description</h3>
+          <textarea id="jdText" rows="13" placeholder="Paste the full job description: title, responsibilities, requirements, nice-to-haves…"></textarea>
+          <label class="dropzone" id="jdDrop" style="padding:12px">
+            <input type="file" id="jdFile" accept=".pdf,.docx,.txt,.md" hidden>
+            <span class="small" id="jdDropTitle">…or upload the JD as a file</span>
+          </label>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="analyzeBtn"><span class="spinner spin"></span>Analyze match</button>
+        <span class="small muted" id="uploadHint">Your files stay on this computer. Only the text is sent to Claude for the AI steps.</span>
+      </div>
+    </section>
+
+    <!-- 2. Analysis -->
+    <section id="step-analysis" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 2</div>
+          <h2>ATS score &amp; senior recruiter review</h2>
+        </div>
+        <p id="analysisSub">Score of your original resume against this JD.</p>
+      </div>
+      <div class="grid-analysis">
+        <div class="card" id="atsCard"></div>
+        <div class="card" id="recruiterCard"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="row" style="margin-bottom:10px">
+          <h3>JD keywords</h3>
+          <span class="small muted" id="kwSub"></span>
+        </div>
+        <div class="kw-groups" id="kwGroups"></div>
+      </div>
+    </section>
+
+    <!-- 3. Tailor -->
+    <section id="step-tailor" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 3</div>
+          <h2>Tailor in iterations, with a live preview</h2>
+        </div>
+        <p>Each pass is scored by the same ATS engine. Target band: <b id="targetLabel">82–85</b>.</p>
+      </div>
+      <div class="tailor-layout">
+        <div class="card preview-card">
+          <div class="preview-toolbar">
+            <strong id="previewTitle">Original</strong>
+            <span class="small muted" id="previewMeta"></span>
+            <span class="spacer"></span>
+            <div class="segmented" id="viewMode">
+              <button data-mode="prev" class="on">Changes</button>
+              <button data-mode="original">vs original</button>
+              <button data-mode="clean">Clean</button>
+            </div>
+            <label class="small row" style="gap:4px"><input type="checkbox" id="hlKeywords" checked> keywords</label>
+            <button class="btn sm" id="editBtn">Edit</button>
+            <a class="btn sm" id="downloadMd" href="#">.md</a>
+          </div>
+          <div class="preview-body" id="previewBody"><div class="paper" id="paper"></div></div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="row" style="margin-bottom:6px">
+              <h3>Score by iteration</h3>
+              <span class="spacer"></span>
+              <span class="small muted" id="deltaLabel"></span>
+            </div>
+            <div class="legend" id="chartLegend"></div>
+            <div class="chart-wrap" id="chart"></div>
+            <div class="versions" id="versions"></div>
+            <div class="row" id="viewingNote" style="margin-top:10px" hidden>
+              <span class="small muted">You're viewing an older version.</span>
+              <button class="btn sm" id="revertBtn">Continue from this version</button>
+            </div>
+          </div>
+
+          <div class="card stack">
+            <div class="row">
+              <button class="btn primary" id="autoBtn"><span class="spinner spin"></span>Auto-tailor to 82–85</button>
+              <button class="btn" id="stepBtn"><span class="spinner spin"></span>Run one iteration</button>
+              <select id="phaseSelect" title="What the next iteration focuses on">
+                <option value="">Next phase (auto)</option>
+                <option value="alignment">Alignment &amp; keywords</option>
+                <option value="impact">Impact (X-Y-Z bullets)</option>
+                <option value="polish">Polish &amp; naturalness</option>
+                <option value="refine">Refine gaps</option>
+                <option value="custom">Only my instructions</option>
+              </select>
+            </div>
+            <div class="small muted" id="nextPhaseHint"></div>
+            <label class="field">Instructions for the tailor (kept for later iterations)
+              <textarea id="instructions" rows="3" placeholder="e.g. Keep it to one page. Emphasize my Python backend work. Don't change my summary tone."></textarea>
+            </label>
+            <label class="field">Add a true fact the resume doesn't show yet
+              <textarea id="factNote" rows="2" placeholder="e.g. At Brightline I also set up Docker-based local environments for 6 engineers."></textarea>
+            </label>
+            <div class="summary-box" id="phaseSummary" hidden></div>
+          </div>
+
+          <details class="panel" id="qPanel" open>
+            <summary>Questions for real numbers <span class="count" id="qCount">0</span></summary>
+            <div class="inner" id="questions"><div class="empty">Questions appear here after an iteration, when a bullet needs a real metric.</div></div>
+          </details>
+          <details class="panel" id="flagPanel" open>
+            <summary>Honesty checks <span class="count" id="flagCount">0</span></summary>
+            <div class="inner" id="flags"><div class="empty">No issues.</div></div>
+          </details>
+          <details class="panel" id="changePanel">
+            <summary>What changed <span class="count" id="changeCount">0</span></summary>
+            <div class="inner" id="changes"><div class="empty">Run an iteration to see changes.</div></div>
+          </details>
+          <details class="panel" id="kwEvidencePanel">
+            <summary>Keywords added / skipped <span class="count" id="kwEvidenceCount">0</span></summary>
+            <div class="inner" id="kwEvidence"><div class="empty">—</div></div>
+          </details>
+          <div class="row">
+            <button class="btn" id="recheckBtn"><span class="spinner spin"></span>Ask the recruiter about this version</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Levers -->
+    <section id="step-levers" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 4</div>
+          <h2>5 things that move your score</h2>
+        </div>
+        <p>Projected scores are computed by re-scoring with each change applied. You decide what you can honestly claim.</p>
+      </div>
+      <div class="card">
+        <div class="bundles" id="bundles"></div>
+        <div class="levers" id="levers"></div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn primary" id="applyConfirmBtn" disabled><span class="spinner spin"></span>Apply my confirmations</button>
+          <button class="btn" id="toTexBtn">I'm happy with it — go to LaTeX</button>
+          <span class="small muted" id="confirmHint">Pick “I have this” or “I don't” on the cards that need your call.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. LaTeX -->
+    <section id="step-tex" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Step 5</div>
+          <h2>Update your Overleaf .tex</h2>
+        </div>
+        <p>Your template stays intact; only the content changes. Paste the result back into Overleaf.</p>
+      </div>
+      <div class="grid-2">
+        <div class="card stack">
+          <h3>Your current .tex</h3>
+          <p class="small muted">In Overleaf: open <b>main.tex</b>, select all, copy. Or Menu → Download → Source and upload the .tex file.</p>
+          <label class="dropzone" id="texDrop">
+            <input type="file" id="texFile" accept=".tex" hidden>
+            <strong id="texDropTitle">Drop your .tex file here or click to browse</strong>
+          </label>
+          <div class="or">or paste it</div>
+          <textarea id="texText" rows="10" spellcheck="false" style="font-family:var(--mono);font-size:12.5px" placeholder="\documentclass{article} …"></textarea>
+          <div class="row">
+            <button class="btn primary" id="texBtn"><span class="spinner spin"></span>Generate tailored .tex</button>
+            <span class="small muted" id="texHint"></span>
+          </div>
+        </div>
+        <div class="card stack" id="texResult">
+          <h3>Result</h3>
+          <div class="empty">The tailored .tex appears here, with compile checks and its ATS score.</div>
+        </div>
+      </div>
+      <div class="card stack" id="texCodeCard" style="margin-top:16px" hidden>
+        <div class="row">
+          <h3>resume_tailored.tex</h3>
+          <span class="spacer"></span>
+          <div class="segmented" id="texView">
+            <button data-mode="code" class="on">File</button>
+            <button data-mode="diff">Changes</button>
+          </div>
+          <button class="btn sm primary" id="copyTex">Copy</button>
+          <a class="btn sm" id="downloadTex" href="#">Download .tex</a>
+        </div>
+        <pre class="code" id="texCode"></pre>
+      </div>
+    </section>
+  </main>
+
+  <div class="activity" id="activity" hidden><span class="spinner" id="activitySpin"></span><span id="activityText"></span><button id="activityClose" title="Dismiss">×</button></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
