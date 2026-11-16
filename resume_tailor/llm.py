@@ -167,7 +167,7 @@ def _call_gemini(system: str, content: list[dict], schema: dict | None) -> str:
         if exc.status == 403:
             raise LLMError("This Gemini API key isn't allowed to use the API. Create a new key in Google AI Studio.") from exc
         if exc.status == 0:
-            raise LLMError("Couldn't reach the Gemini API. Try again shortly.") from exc
+            raise LLMError(f"Couldn't reach the Gemini API ({exc.message[:160]}). Try again shortly.") from exc
         raise LLMError(f"Gemini API error {exc.status}: {exc.message[:200]}") from exc
 
 
@@ -229,6 +229,21 @@ def _call_anthropic(system: str, content: list[dict], *, schema: dict | None, ef
     if message.stop_reason == "max_tokens":
         raise LLMError("The response was cut off (too long). Try a shorter resume or JD.")
     return "".join(block.text for block in message.content if getattr(block, "type", "") == "text")
+
+
+def check() -> dict:
+    """Admin diagnostic: one tiny request through the configured provider."""
+    import time as _time
+
+    start = _time.time()
+    try:
+        reply = _call("Reply with exactly: OK", [{"type": "text", "text": "Connection test."}], effort="low", max_tokens=2000)
+        return {"ok": True, "provider": provider_label(), "model": model_name(), "reply": reply.strip()[:40],
+                "seconds": round(_time.time() - start, 1)}
+    except LLMError as exc:
+        cause = exc.__cause__
+        detail = f"{type(cause).__name__}: {cause}" if cause else ""
+        return {"ok": False, "provider": provider_label(), "model": model_name(), "error": str(exc), "detail": detail[:500]}
 
 
 def _json(text: str) -> dict:

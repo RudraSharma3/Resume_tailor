@@ -100,6 +100,22 @@
     table.append(body);
   }
 
+  $("#aiCheckBtn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.classList.add("loading");
+    const out = $("#aiCheckResult");
+    out.textContent = "Testing…";
+    try {
+      const r = await api("/api/admin/ai-check", "POST");
+      out.textContent = r.ok
+        ? `✓ Working: ${r.provider} · ${r.model} answered in ${r.seconds}s.`
+        : `✕ ${r.provider} · ${r.model}: ${r.error}${r.detail ? ` [${r.detail}]` : ""}`;
+      out.style.color = r.ok ? "var(--good-ink)" : "var(--critical-ink)";
+    } catch (err) { out.textContent = err.message; }
+    finally { btn.disabled = false; btn.classList.remove("loading"); }
+  });
+
   async function load() {
     try { render(await api("/api/admin/users")); }
     catch (err) { toast(err.message, true); }

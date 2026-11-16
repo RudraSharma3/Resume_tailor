@@ -133,6 +133,8 @@ def _stream(sid: str, user: dict, work: Callable[[Callable[[dict], None]], Any])
         try:
             work(events.put)
         except (llm.LLMError, ValueError, ParseError) as exc:
+            if isinstance(exc, llm.LLMError):
+                log.warning("AI step failed: %s | cause: %r", exc, exc.__cause__)  # visible in the host's logs
             events.put({"event": "error", "message": str(exc)})
         except Exception as exc:  # noqa: BLE001 - surface unexpected failures to the UI
             log.exception("Step failed")
@@ -289,6 +291,14 @@ def admin_set_status(user_id: str, body: StatusRequest, _admin: dict = Depends(r
         return {"user": auth.set_status(user_id, body.status)}
     except auth.AuthError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
+
+
+@app.post("/api/admin/ai-check")
+def admin_ai_check(_admin: dict = Depends(require_admin)) -> dict:
+    if not llm.available():
+        return {"ok": False, "provider": llm.provider_label(), "model": llm.model_name(),
+                "error": "No API key set for this provider (ANTHROPIC_API_KEY or GEMINI_API_KEY)."}
+    return llm.check()
 
 
 @app.delete("/api/admin/users/{user_id}")

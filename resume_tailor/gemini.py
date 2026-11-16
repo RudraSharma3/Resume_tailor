@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import ssl
 import threading
 import time
 import urllib.error
@@ -68,6 +69,33 @@ def _parse_retry(details: list) -> float | None:
     return None
 
 
+_ssl_ctx: ssl.SSLContext | None = None
+
+
+def ssl_context() -> ssl.SSLContext:
+    """Same certificate lookup as the Anthropic SDK (which works on Render): SSL_CERT_FILE/DIR if set,
+    else the operating system's trust store, else certifi. Plain urllib defaults can point at an empty
+    CA path on some hosted Pythons, which makes every HTTPS call fail."""
+    global _ssl_ctx
+    if _ssl_ctx is None:
+        cafile, capath = os.environ.get("SSL_CERT_FILE"), os.environ.get("SSL_CERT_DIR")
+        if cafile or capath:
+            _ssl_ctx = ssl.create_default_context(cafile=cafile or None, capath=capath or None)
+        else:
+            try:
+                import truststore
+
+                _ssl_ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            except Exception:  # noqa: BLE001
+                try:
+                    import certifi
+
+                    _ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:  # noqa: BLE001
+                    _ssl_ctx = ssl.create_default_context()
+    return _ssl_ctx
+
+
 def transport(method: str, path: str, body: dict | None = None, timeout: float = 300) -> dict:
     """One HTTP request to the Gemini API. Tests replace this function."""
     data = json.dumps(body).encode() if body is not None else None
@@ -76,7 +104,8 @@ def transport(method: str, path: str, body: dict | None = None, timeout: float =
         headers={"x-goog-api-key": api_key(), "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - fixed https endpoint
+        context = ssl_context() if BASE_URL.startswith("https://") else None
+        with urllib.request.urlopen(req, timeout=timeout, context=context) as resp:  # noqa: S310 - fixed https endpoint
             return json.loads(resp.read() or b"{}")
     except urllib.error.HTTPError as exc:
         try:
@@ -85,7 +114,8 @@ def transport(method: str, path: str, body: dict | None = None, timeout: float =
             err = {}
         raise GeminiError(exc.code, err.get("message", str(exc)), err.get("status", ""), _parse_retry(err.get("details"))) from exc
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
-        raise GeminiError(0, f"Couldn't reach the Gemini API: {exc}") from exc
+        reason = getattr(exc, "reason", None) or exc
+        raise GeminiError(0, f"{type(reason).__name__}: {reason}") from exc
 
 
 # --- Model selection --------------------------------------------------------------------------------
